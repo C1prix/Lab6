@@ -1,0 +1,112 @@
+/*
+  SD card datalogger
+
+ This example shows how to log data from three analog sensors
+ to an SD card using the SD library.
+
+ The circuit:
+ * analog sensors on analog ins 0, 1, and 2
+ * SD card attached to SPI bus as follows:
+ ** MOSI - pin 11
+ ** MISO - pin 12
+ ** CLK - pin 13
+ ** CS - pin 4
+
+ created  24 Nov 2010
+ modified 9 Apr 2012
+ by Tom Igoe
+
+ This example code is in the public domain.
+
+ */
+#include <Energia.h>
+#include <SPI.h>
+#include <SD.h>
+
+// Definir un tamaño máximo para la cadena
+#define MAX_CADENA 100
+// Declarar una variable para almacenar la cadena
+char cadena[MAX_CADENA];
+const int chipSelect = 12;
+int in = 0; // Indice para rastrear la posición actual en la cadena
+
+void setup()
+{
+  // Open serial communications and wait for port to open:
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for Leonardo only
+  }
+
+  SPI.setModule(0);
+  
+  Serial.print("Initializing SD card...");
+  // make sure that the default chip select pin is set to
+  // output, even if you don't use it:
+  pinMode(12, OUTPUT);
+
+  // see if the card is present and can be initialized:
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    return;
+  }
+  Serial.println("card initialized.");
+
+  // Inicializar la comunicación serial a 9600 bps
+  Serial.begin(9600);
+
+  // Inicializar la cadena vacía
+  memset(cadena, 0, sizeof(cadena));
+  in = 0;
+
+  // Mensaje de bienvenida
+  Serial.println("Bienvenido al Programa de Recepción y Transmisión de Mensajes");
+
+  
+}
+
+void loop()
+{
+  // Esperar a que llegue un carácter por el puerto serial
+  if (Serial.available()) {
+    char caracter = Serial.read();
+
+    // Verificar si el carácter es un salto de línea o retorno de carro
+    if (caracter == '\n' || caracter == '\r') {
+      // Si es un carácter de nueva línea o retorno de carro, terminar la cadena
+      cadena[in] = '\0';
+
+      // Mostrar la cadena recibida
+      Serial.print("Mensaje recibido: ");
+      Serial.println(cadena);
+
+      // open the file. note that only one file can be open at a time,
+      // so you have to close this one before opening another.
+      File dataFile = SD.open("test.txt", FILE_WRITE);
+    
+      // if the file is available, write to it:
+      if (dataFile) {
+        dataFile.println(cadena);
+        dataFile.close();
+        // print to the serial port too:
+        //Serial.println(dataString);
+      }
+      // if the file isn't open, pop up an error:
+      else{
+        Serial.println("error opening datalog.txt");
+      }
+
+      // Reiniciar la cadena para futuros mensajes
+      memset(cadena, 0, sizeof(cadena));
+      in = 0;
+    } else {
+      // Agregar el carácter a la cadena si no es un carácter de nueva línea o retorno de carro
+      if (in < MAX_CADENA - 1) {
+        cadena[in] = caracter;
+        in++;
+      }
+    }
+  }
+  
+}
